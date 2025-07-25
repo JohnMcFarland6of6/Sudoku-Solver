@@ -1,16 +1,30 @@
 import numpy as np
 import bs4
 import requests
-from cell import Cell
+#from cell import Cell
+from sudoku import Sudoku, Cell
+
+
 
 def main():
-    puzzleLists = getGameData()
-    easyPuzzle = listToPuzzle(puzzleLists[0])
-    printPuzzle(easyPuzzle)
+    puzzles = getPuzzles()
+    print(puzzles[1])
 
-    solve(easyPuzzle)
-    printCandidates(easyPuzzle)
 
+    getCandidates(puzzles[1])
+    solve(puzzles[1])
+    print(puzzles[1])
+
+def getPuzzles():
+    puzzleList = getGameData()
+
+    temp = puzzleList[1]
+    puzzleList[1] = puzzleList[2]
+    puzzleList[2] = temp
+
+    for i, puzzle in enumerate(puzzleList):
+        puzzleList[i] = Sudoku(listToPuzzle(puzzle), i)
+    return puzzleList
 
 def getGameData():
     nytURL = "https://www.nytimes.com/puzzles/sudoku/easy"
@@ -36,89 +50,99 @@ def getGameData():
 
     return puzzles # | 0: easy | 1: hard | 2: medium |
 
-
 def listToPuzzle(puzzleList):
     COLS = 9
     ROWS = 9
     puzzle = np.empty((9,9), dtype= object)
     for i in range(ROWS):
         for j in range(COLS):
+
             if puzzleList[i*COLS + j] != 0:
-                puzzle[i][j] = Cell(puzzleList[i*COLS + j], [])
+                puzzle[i][j] = Cell(i, j, puzzleList[i*COLS + j], [], puzzle)
             else:
-                puzzle[i][j] = Cell(0, [1,2,3,4,5,6,7,8,9])
+                puzzle[i][j] = Cell(i, j, 0, [1,2,3,4,5,6,7,8,9], puzzle)
 
     return puzzle
 
-def removeCandidates(puzzleRow):
+def eliminateCandidates(unit):
     COLS = 9
     ROWS = 9
-    solutionsInRow = []
-    for cell in puzzleRow:
-        solutionsInRow.append(cell.solution)
+    solutions = []
+    for cell in unit:
+        solutions.append(cell.solution)
     for i in range(ROWS):
-        for solution in solutionsInRow:
-            if solution in puzzleRow[i].candidates:
-                puzzleRow[i].candidates.remove(solution)
+        for sol in solutions:
+            if sol in unit[i].candidates:
+                unit[i].candidates.remove(sol)
 
-def printPuzzle(puzzle):
-    for i in range(len(puzzle)):
-        print("")
-        for j in range(len(puzzle[0])):
-            print(puzzle[i][j].solution, " ", end='')
-    print("")
-
-def printCandidates(puzzle):
-    for i in range(len(puzzle)):
-        print("")
-        for j in range(len(puzzle[0])):
-            print(puzzle[i][j].candidates)
-    print("")
-
-def getEasyCandidates(puzzle):
+def getCandidates(puzzle):
     ROWS = 9
     COLS = 9
-    for i in range(ROWS):
-        removeCandidates(puzzle[i])
-    for i in range(COLS):
-        removeCandidates(puzzle[:,i])
-    for i in range(3):
-        for j in range(3):
-            box = puzzle[i*3:i*3+3,j*3:j*3+3]
-            removeCandidates(box.flatten())
+    for row in puzzle.getRows():
+        eliminateCandidates(row)
+    for col in puzzle.getCols():
+        eliminateCandidates(col)
+    for box in puzzle.getBoxes():
+        eliminateCandidates(box)
 
 def solve(puzzle):
+    getCandidates(puzzle)
+    for i in range(10):
+        forcedDigit(puzzle)
+        for unit in puzzle.getRows():
+            hiddenSingle(unit)
+        for unit in puzzle.getCols():
+            hiddenSingle(unit)
+        for unit in puzzle.getBoxes():
+            hiddenSingle(unit)
+    print(puzzle)
+
+
+def forcedDigit(puzzle):
     ROWS = 9
     COLS = 9
     puzzleFin = False
-    getEasyCandidates(puzzle)
+
     while(puzzleFin is False):
         puzzleFin = True
-        for i in range(ROWS):
-            for j in range(COLS):
-                #print(puzzle[i][j].candidates) #TEMP###############
-                if len(puzzle[i][j].candidates) == 1:
-                    solution = puzzle[i][j].candidates[0]
-                    puzzle[i][j].solution = solution
-                    update(puzzle[i], [solution]) #updates row
-                    update(puzzle[:,j], [solution]) #updates col
-                    what = (i%3)*3
-                    theheck = (j%3)*3
-                    box = puzzle[((i)//3)*3:(i//3)*3+3,(j//3)*3:(j//3)*3+3].flatten()
-                    update(box, [solution]) #updates 3x3 box
-
-                    #printCandidates(puzzle) #TEMP###############
-                else:
+        for row in puzzle.grid:
+            for cell in row:
+                if len(cell.candidates) == 1:
                     puzzleFin = False
-        printPuzzle(puzzle)
+                    solution = cell.candidates[0]
+                    cell.solution = solution
+                    update(cell.getRow(), [solution]) #updates row
+                    update(cell.getCol(), [solution]) #updates col
+                    update(cell.getBox(), [solution]) #updates 3x3 box
+        #print(puzzle)
 
-
-def update(list, solutionsInRow):
+def update(unit, solutions):
     ROWS = 9
     for i in range(ROWS):
-        for solution in solutionsInRow:
-            if solution in list[i].candidates:
-                list[i].candidates.remove(solution)
+        for sol in solutions:
+            if sol in unit[i].candidates:
+                unit[i].candidates.remove(sol)
+
+def hiddenSingle(unit):
+    for candidate in range(1,10):
+        onlyCell = None
+        onlyCellFlag = True
+        flag = False
+        for cell in unit:
+            if candidate in cell.candidates:
+                if onlyCellFlag:
+                    onlyCellFlag = False
+                    flag = True
+                    onlyCell = cell
+                else:
+                    flag = False
+                    onlyCell = None
+                    break
+        if flag:
+            onlyCell.solution = candidate
+            onlyCell.candidates = []
+            update(onlyCell.getRow(), [candidate]) #updates row
+            update(onlyCell.getCol(), [candidate]) #updates col
+            update(onlyCell.getBox(), [candidate]) #updates 3x3 box
 
 main()
-#box = easyPuzzle[0:3,0:3]
