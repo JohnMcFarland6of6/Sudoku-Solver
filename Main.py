@@ -1,3 +1,4 @@
+import numpy
 import numpy as np
 import bs4
 import requests
@@ -83,18 +84,20 @@ def getCandidates(puzzle):
     for col in puzzle.getCols():
         eliminateCandidates(col)
     for box in puzzle.getBoxes():
-        eliminateCandidates(box)
+        eliminateCandidates(box.flatten())
 
 def solve(puzzle):
     getCandidates(puzzle)
-    for i in range(10):
-        forcedDigit(puzzle)
-        for unit in puzzle.getRows():
-            hiddenSingle(unit)
-        for unit in puzzle.getCols():
-            hiddenSingle(unit)
-        for unit in puzzle.getBoxes():
-            hiddenSingle(unit)
+    for x in range(3):
+        pointingPair(puzzle)
+        for i in range(10):
+            forcedDigit(puzzle)
+            for unit in puzzle.getRows():
+                hiddenSingle(unit)
+            for unit in puzzle.getCols():
+                hiddenSingle(unit)
+            for unit in puzzle.getBoxes():
+                hiddenSingle(unit.flatten())
     print(puzzle)
 
 
@@ -117,11 +120,10 @@ def forcedDigit(puzzle):
         #print(puzzle)
 
 def update(unit, solutions):
-    ROWS = 9
-    for i in range(ROWS):
+    for cell in unit:
         for sol in solutions:
-            if sol in unit[i].candidates:
-                unit[i].candidates.remove(sol)
+            if sol in cell.candidates:
+                cell.candidates.remove(sol)
 
 def hiddenSingle(unit):
     for candidate in range(1,10):
@@ -144,5 +146,29 @@ def hiddenSingle(unit):
             update(onlyCell.getRow(), [candidate]) #updates row
             update(onlyCell.getCol(), [candidate]) #updates col
             update(onlyCell.getBox(), [candidate]) #updates 3x3 box
+
+def pointingPair(puzzle):
+    boxes = puzzle.getBoxes()
+    for box in boxes:
+        box = box.reshape(3,3)
+        for i, row in enumerate(box):
+            otherRows = numpy.delete(box, i, 0)
+            for candidate in getUnitCandidates(row):
+                if candidate not in getUnitCandidates(otherRows.flatten()):
+                    for cell in row[0].getRow():
+                        if cell not in row:
+                            update([cell], [candidate])
+
+
+def getUnitCandidates(unit):
+    candidates = []
+    for cell in unit:
+        for candidate in cell.candidates:
+            if candidate not in candidates:
+                candidates.append(candidate)
+    print(candidates)
+    return candidates
+
+
 
 main()

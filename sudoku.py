@@ -39,12 +39,24 @@ class Sudoku:
         for i in range(3):
             for j in range(3):
                 boxList.append(self.grid
-                               [i*3:i*3+3,j*3:j*3+3].flatten()
+                               [i*3:i*3+3,j*3:j*3+3] #.flatten()
                                )
         return boxList
     def getDifficulty(self):
         return self.difficulties[self.difficulty]
 
+class Unit:
+    def __init__(self, cells = None, ):
+        self.cells = cells
+
+
+    def getCandidates(self):
+        candidates = []
+        for cell in self.cells:
+            for candidate in cell.candidates:
+                if candidate not in candidates:
+                    candidates.append(candidate)
+        return candidates
 
 class Cell:
     #solution = 0

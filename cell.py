@@ -30,7 +30,12 @@ class Cell:
 
 '''
 
-
+bool true
+    if candidate is in the row  
+        if bool is true
+            then set bool to false
+        if bool is false
+            break everything 
 
 
 
