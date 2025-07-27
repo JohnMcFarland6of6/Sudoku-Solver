@@ -36,6 +36,12 @@ bool true
             then set bool to false
         if bool is false
             break everything 
+            
+for each col
+    for each box in each col
+        for each candidate
+            if candidate in one box
+                remove candidate from other rows in box 
 
 
 

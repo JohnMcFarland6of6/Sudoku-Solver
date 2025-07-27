@@ -2,19 +2,20 @@ import numpy
 import numpy as np
 import bs4
 import requests
+import tkinter as tk
+from tkinter import ttk
 #from cell import Cell
 from sudoku import Sudoku, Cell
 
 
 
 def main():
+
     puzzles = getPuzzles()
-    print(puzzles[1])
+    for puzzle in puzzles:
+        solve(puzzle)
+        print(puzzle)
 
-
-    getCandidates(puzzles[1])
-    solve(puzzles[1])
-    print(puzzles[1])
 
 def getPuzzles():
     puzzleList = getGameData()
@@ -88,8 +89,9 @@ def getCandidates(puzzle):
 
 def solve(puzzle):
     getCandidates(puzzle)
-    for x in range(3):
-        pointingPair(puzzle)
+    for x in range(4):
+        lineBoxReduction(puzzle)
+        boxLineReduction(puzzle)
         for i in range(10):
             forcedDigit(puzzle)
             for unit in puzzle.getRows():
@@ -98,7 +100,6 @@ def solve(puzzle):
                 hiddenSingle(unit)
             for unit in puzzle.getBoxes():
                 hiddenSingle(unit.flatten())
-    print(puzzle)
 
 
 def forcedDigit(puzzle):
@@ -117,7 +118,6 @@ def forcedDigit(puzzle):
                     update(cell.getRow(), [solution]) #updates row
                     update(cell.getCol(), [solution]) #updates col
                     update(cell.getBox(), [solution]) #updates 3x3 box
-        #print(puzzle)
 
 def update(unit, solutions):
     for cell in unit:
@@ -147,7 +147,7 @@ def hiddenSingle(unit):
             update(onlyCell.getCol(), [candidate]) #updates col
             update(onlyCell.getBox(), [candidate]) #updates 3x3 box
 
-def pointingPair(puzzle):
+def boxLineReduction(puzzle): #box-line reduction
     boxes = puzzle.getBoxes()
     for box in boxes:
         box = box.reshape(3,3)
@@ -158,17 +158,51 @@ def pointingPair(puzzle):
                     for cell in row[0].getRow():
                         if cell not in row:
                             update([cell], [candidate])
+        for i, col in enumerate(box.T):
+            otherCols = numpy.delete(box, i, 1)
+            for candidate in getUnitCandidates(col):
+                if candidate not in getUnitCandidates(otherCols.flatten()):
+                    for cell in col[0].getCol():
+                        if cell not in col:
+                            update([cell], [candidate])
+
+def lineBoxReduction(puzzle):
+    for row in puzzle.getRows():
+        row = row.reshape(3,3)
+        for i, band  in enumerate(row):
+            otherBands = numpy.delete(row,i,0)
+            for candidate in getUnitCandidates(band):
+                if candidate not in getUnitCandidates(otherBands.flatten()):
+                    for cell in band[0].getBox():
+                        if cell not in band:
+                            update([cell], [candidate])
+
+    for col in puzzle.getCols():
+        col = col.reshape(3,3)
+        for i, band  in enumerate(col):
+            otherBands = numpy.delete(col,i,0)
+            for candidate in getUnitCandidates(band):
+                if candidate not in getUnitCandidates(otherBands.flatten()):
+                    for cell in band[0].getBox():
+                        if cell not in band:
+                            update([cell], [candidate])
+'''
+for each col
+    for each box in each col
+        for each candidate
+            if candidate in one box
+                remove candidate from other rows in box 
 
 
+
+'''
 def getUnitCandidates(unit):
     candidates = []
     for cell in unit:
         for candidate in cell.candidates:
             if candidate not in candidates:
                 candidates.append(candidate)
-    print(candidates)
     return candidates
-
 
 
 main()
