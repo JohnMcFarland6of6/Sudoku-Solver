@@ -5,16 +5,30 @@ import requests
 import tkinter as tk
 from tkinter import ttk
 #from cell import Cell
-from sudoku import Sudoku, Cell
 
+from sudoku import Sudoku, Cell
+from GUI import mainMenu, BoxWidget
 
 
 def main():
 
     puzzles = getPuzzles()
-    for puzzle in puzzles:
-        solve(puzzle)
-        print(puzzle)
+    #for puzzle in puzzles:
+     #   solve(puzzle)
+      #  print(puzzle)
+
+    nytOrange = "#f99c30"
+    window = tk.Tk()
+
+    window.geometry("800x600")
+    window.title("Sudoku Solver")
+    window.configure(bg=nytOrange)
+
+    #getCandidates(puzzles[0])
+
+    menu = mainMenu(window, puzzles[0])
+
+    window.mainloop()
 
 
 def getPuzzles():

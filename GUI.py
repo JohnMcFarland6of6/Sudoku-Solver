@@ -1,18 +1,15 @@
 import tkinter as tk
 from tkinter import ttk
 
+
+from sudoku import Sudoku, Cell
+
 nytOrange = "#f99c30"
-
-window = tk.Tk()
-
-window.geometry("800x600")
-window.title("Sudoku Solver")
-window.configure(bg=nytOrange)
 
 
 class mainMenu():
-    def __init__(self, master):
-        self.sudoku = sudokuDisplay(master)
+    def __init__(self, master, puzzle):
+        self.sudoku = BoxWidget(master, puzzle.getBoxes()[0])
         self.menu = ttk.Frame(master, width=700, height= 500, style='menuFrame.TFrame')
         self.master = master
         self.topBar = ttk.Frame(master, width = 800, height = 25, style='topBar.TFrame')
@@ -22,7 +19,7 @@ class mainMenu():
         style.configure('menuFrame.TFrame', background = nytOrange)
         style.configure('topBar.TFrame', background= "white")
 
-        #topBar = ttk.Frame(master, width = 800, height = 25, style='topBar.TFrame')
+        backButton = tk.Button(self.topBar, text="<-", width="10", bg="white", command =lambda : self.toMenu())
         self.topBar.pack()
 
         self.menu.pack()
@@ -41,27 +38,48 @@ class mainMenu():
     def changeWindow(self, difficulty):
         self.menu.forget()
         self.sudoku.pack()
-        print(difficulty)
-
-        #menuFra
+        for widget in self.topBar.winfo_children():
+            widget.pack(side="left")
 
     def toMenu(self):
         self.sudoku.forget()
-        self.menu.tkraise()
         self.menu.pack()
+        for widget in self.topBar.winfo_children():
+            widget.forget()
 
-
-
-class sudokuDisplay(ttk.Frame):
+class sudokuDisplay(tk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
+        #label = tk.Label(self, text="Tada!")
+        #label.pack()
+        b = BoxWidget(parent, [1,2,3,4,5,6,7,8,9])
+        #b.pack()
+
+class BoxWidget(tk.Frame):
+    def __init__(self, parent, box):
+        super().__init__(parent)
+        #grid = tk.Frame(self, width = 81, height = 81, borderwidth=1, relief="solid")
+        self.config(width=243, height=243)
+        self.pack_propagate(False)
+        for i, row in enumerate(box):
+            for j, cell in enumerate(row):
+                if cell.solution != 0:
+                    tk.Label(self, text=cell.solution,  font=(
+                        'Times New Roman', 21), wraplength=27, relief="solid", borderwidth= 1).grid(
+                        row=i, column=j, sticky="nsew")
+                else:
+                    candidateStr = ""
+                    for possibleCandidate in range(1,10):
+                        if possibleCandidate in cell.candidates:
+                            candidateStr = candidateStr + str(possibleCandidate) + " "
+                        else:
+                            candidateStr = candidateStr + "  "
+                    tk.Label(self, text=candidateStr,  font=(
+                        'Times New Roman', 8), wraplength=27, relief="solid", borderwidth= 1,height=3, width=6).grid(
+                        row=i, column=j,sticky="nsew")
 
 
 
-        label = tk.Label(self, text="Tada!")
-        label.pack()
 
 
-menu = mainMenu(window)
 
-window.mainloop()
