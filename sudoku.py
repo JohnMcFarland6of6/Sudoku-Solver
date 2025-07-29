@@ -1,5 +1,5 @@
 from symtable import Class
-#rom cell import Cell
+import numpy as np
 
 class Sudoku:
     DIMENSIONS = 9
@@ -31,42 +31,157 @@ class Sudoku:
         print("")
 
     def getRows(self):
-        return self.grid[:]
+        rows = []
+        for row in self.grid[:]:
+            rows.append(Unit(row))
+        return rows
     def getCols(self):
-        return self.grid.T[:]
+        cols = []
+        for col in self.grid.T[:]:
+            cols.append(Unit(col))
+        return cols
     def getBoxes(self):
         boxList = []
         for i in range(3):
             for j in range(3):
-                boxList.append(self.grid
-                               [i*3:i*3+3,j*3:j*3+3] #.flatten()
-                               )
+                boxList.append(Unit(self.grid
+                               [i*3:i*3+3,j*3:j*3+3].flatten()
+                               ))
         return boxList
     def getDifficulty(self):
         return self.difficulties[self.difficulty]
 
+    def getCandidates(self):
+        for row in self.getRows():
+            row.eliminateCandidates()
+        for col in self.getCols():
+            col.eliminateCandidates()
+        for box in self.getBoxes():
+            box.eliminateCandidates() #have to flatten before
+
+    def solve(self):
+        self.getCandidates()
+        for x in range(4):
+            self.forcedDigit()
+            self.hiddenSingle()
+            self.lineBoxReduction()
+            self.boxLineReduction()
+
+    def forcedDigit(self):
+        puzzleFin = False
+        while(puzzleFin is False):
+            puzzleFin = True
+            for row in self.grid:
+                for cell in row:
+                    if len(cell.candidates) == 1:
+                        puzzleFin = False
+                        solution = cell.candidates[0]
+                        cell.solution = solution
+                        cell.getRow().update([solution])
+                        cell.getCol().update([solution])
+                        cell.getBox().update([solution])
+
+
+    def boxLineReduction(self): #box-line reduction
+        boxes = self.getBoxes()
+        for box in boxes:
+            box = box.cells.reshape(3,3)
+            for i, row in enumerate(box):
+                otherRows = Unit(np.delete(box, i, 0).flatten())
+                for candidate in Unit(row).candidates:
+                    if candidate not in otherRows.candidates:
+                        for cell in row[0].getRow().cells:
+                            if cell not in row:
+                                Unit([cell]).update([candidate])
+            for i, col in enumerate(box.T):
+                otherCols = Unit(np.delete(box, i, 1).flatten())
+                for candidate in Unit(col).candidates:
+                    if candidate not in otherCols.candidates:
+                        for cell in col[0].getCol().cells:
+                            if cell not in col:
+                                Unit([cell]).update([candidate])
+
+    def lineBoxReduction(self):
+        for row in self.getRows():
+            rowBox = row.cells.reshape(3,3)
+            for i, band  in enumerate(rowBox):
+                otherBands = Unit(np.delete(rowBox,i,0).flatten())
+                for candidate in Unit(band).candidates:
+                    if candidate not in otherBands.candidates:
+                        for cell in band[0].getBox().cells:
+                            if cell not in band:
+                                Unit([cell]).update([candidate])
+
+    def hiddenSingle(self):
+        for row in self.getRows():
+            row.hiddenSingleHelper()
+        for col in self.getCols():
+            col.hiddenSingleHelper()
+        for box in self.getBoxes():
+            box.hiddenSingleHelper()
+
+
+
 class Unit:
     def __init__(self, cells = None, ):
         self.cells = cells
-
-
-    def getCandidates(self):
         candidates = []
         for cell in self.cells:
             for candidate in cell.candidates:
                 if candidate not in candidates:
                     candidates.append(candidate)
-        return candidates
+        self.candidates = candidates
+
+    def eliminateCandidates(self):
+        COLS = 9
+        ROWS = 9
+        solutions = []
+        for cell in self.cells:
+            solutions.append(cell.solution)
+        for cell in self.cells:
+            for sol in solutions:
+                if sol in cell.candidates:
+                    cell.candidates.remove(sol)
+
+    def update(self, solutions): #have to update updates
+        for cell in self.cells:
+            for sol in solutions:
+                if sol in cell.candidates:
+                    cell.candidates.remove(sol)
+
+    def hiddenSingleHelper(self):
+        for candidate in range(1,10):
+            onlyCell = None
+            onlyCellFlag = True
+            flag = False
+            for cell in self.cells:
+                if candidate in cell.candidates:
+                    if onlyCellFlag:
+                        onlyCellFlag = False
+                        flag = True
+                        onlyCell = cell
+                    else:
+                        flag = False
+                        onlyCell = None
+                        break
+            if flag:
+                onlyCell.solution = candidate
+                onlyCell.candidates = []
+                onlyCell.getRow().update([candidate])
+                onlyCell.getCol().update([candidate])
+                onlyCell.getBox().update([candidate])
+
 
 class Cell:
     #solution = 0
     #candidates = []
-    def __init__(self, x,y, solution = 0, candidates = None, sudoku = None):
+    def __init__(self, x,y, solution = 0, candidates = None, sudoku = None, isGiven = False):
         self.x = x
         self.y = y
         self.solution = solution
         self.candidates = candidates
         self.sudoku = sudoku
+        self.isGiven = isGiven
 
 
     def __str__(self):
@@ -76,14 +191,16 @@ class Cell:
         return f"Solution: {self.solution}, candidates: {self.candidates}"
 
     def getRow(self):
-        return self.sudoku[self.x]
+        return Unit(self.sudoku[self.x])
 
     def getCol(self):
-        return self.sudoku[:,self.y]
+        return Unit(self.sudoku[:,self.y])
 
     def getBox(self):
-        box = self.sudoku[
+        box = Unit(self.sudoku[
               (self.x//3)*3:(self.x//3)*3+3,
               (self.y//3)*3:(self.y//3)*3+3
-              ]
-        return box.flatten()
+              ].flatten())
+        return box #.flatten()
+
+
