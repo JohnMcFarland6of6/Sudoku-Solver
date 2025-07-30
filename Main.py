@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 #from cell import Cell
 
-from sudoku import Sudoku, Cell
+from sudoku_model import Sudoku, Cell
 from GUI import mainMenu, BoxWidget
 
 
@@ -16,9 +16,12 @@ def main():
 
     import time
     startime = time.time()
-    puzzles[2].solve()
+    puzzles[1].solve()
     print(f'Puzzle took {time.time() - startime} seconds to solve!')
-    print(puzzles[2])
+    print(puzzles[1])
+    for step in puzzles[1].stepQueue:
+        print(step)
+
     nytOrange = "#f99c30"
     window = tk.Tk()
 
@@ -38,7 +41,8 @@ def getPuzzles():
     puzzleList[2] = temp
 
     for i, puzzle in enumerate(puzzleList):
-        puzzleList[i] = Sudoku(listToPuzzle(puzzle), i)
+        puzzleList[i] = listToPuzzle(puzzle)
+        puzzleList[i].difficulty = i
     return puzzleList
 
 def getGameData():
@@ -68,15 +72,15 @@ def getGameData():
 def listToPuzzle(puzzleList):
     COLS = 9
     ROWS = 9
-    puzzle = np.empty((9,9), dtype= object)
+    puzzle = Sudoku(np.empty((9,9), dtype= object))
     for i in range(ROWS):
         for j in range(COLS):
 
             if puzzleList[i*COLS + j] != 0:
-                puzzle[i][j] = Cell(i, j, puzzleList[i*COLS + j], [], puzzle, True)
+                puzzle.grid[i][j] = Cell(i, j, puzzleList[i*COLS + j], [], puzzle, True)
 
             else:
-                puzzle[i][j] = Cell(i, j, 0, [1,2,3,4,5,6,7,8,9], puzzle)
+                puzzle.grid[i][j] = Cell(i, j, 0, [1,2,3,4,5,6,7,8,9], puzzle)
 
     return puzzle
 

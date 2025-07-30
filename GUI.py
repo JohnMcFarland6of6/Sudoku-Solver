@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
-
-from sudoku import Sudoku, Cell
+import numpy as np
+from sudoku_model import Sudoku, Unit, Cell
+#from sudoku import Sudoku, Cell
 
 nytOrange = "#f99c30"
 
@@ -11,7 +12,7 @@ class mainMenu():
     def __init__(self, master, puzzles):
         self.puzzles = puzzles
         self.sudoku = None #sudokuWidget(master, puzzle)
-        self.info = infoWidget(master)
+        self.info = None #infoWidget(master)
         self.menu = ttk.Frame(master, width=500, height= 500, style='menuFrame.TFrame')
         self.master = master
         self.topBar = ttk.Frame(master, width = 850, height = 25, style='topBar.TFrame')
@@ -40,6 +41,7 @@ class mainMenu():
 
     def changeWindow(self, difficulty):
         self.menu.forget()
+        self.info = infoWidget(self.master, self.puzzles[difficulty])
         self.puzzles[difficulty].getCandidates()
         self.sudoku = sudokuWidget(self.master, self.puzzles[difficulty])
         self.sudoku.pack(side=tk.LEFT, padx=25)
@@ -61,6 +63,12 @@ class sudokuWidget(tk.Frame):
             self.rowconfigure(i, weight = 1, uniform="grid")
             self.columnconfigure(i, weight = 1, uniform="grid")
 
+        '''
+        self.logicPuzzle = np.empty((9,9),dtype=object)
+        for i in range(9):
+            for j in range(9):
+                self.logicPuzzle[i][j] = CellWidget(puzzle.grid[i][j])
+        '''
         for i, box in enumerate(puzzle.getBoxes()):
             BoxWidget(self, box).grid(row=i//3, column=i%3, sticky="nsew")
 
@@ -75,17 +83,19 @@ class BoxWidget(tk.Frame):
             self.columnconfigure(i, weight = 1, uniform="grid")
         for i, row in enumerate(box.cells.reshape(3,3)):
             for j, cell in enumerate(row):
-                CellWidget(self, cell).grid(row=i, column=j, sticky="nsew")
+                widget = CellWidget(self, cell)
+                widget.grid(row=i, column=j, sticky="nsew")
+                cell.widget = widget
         self.configure(highlightbackground="#979797", highlightthickness=1, relief="solid")
 
 class CellWidget(tk.Frame):
     def __init__(self, parent, cell):
         super().__init__(parent)
-
+        self.label= None
         self.configure(width= 50, height=50)
         self.grid_propagate(False)
         if cell.solution != 0:
-            label = tk.Label(self, text=cell.solution,  font=(
+            self.label = tk.Label(self, text=cell.solution,  font=(
                 'Franklin Gothic', 21, "bold"), highlightbackground="#979797", highlightthickness=1, relief="flat", anchor="center", background="#dfdfdf")
         else:
             candidateStr = ""
@@ -100,16 +110,17 @@ class CellWidget(tk.Frame):
                     candidateStr += "\n "
                 else:
                     candidateStr += " "
-            label = tk.Label(self, text=candidateStr,  font=(
+            self.label = tk.Label(self, text=candidateStr,  font=(
                 'Courier', 9), highlightbackground="#979797", highlightthickness=1, relief="flat", anchor="center")
 
-        label.grid(sticky="nsew")
+        self.label.grid(sticky="nsew")
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
 class infoWidget(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, puzzle):
         super().__init__(parent)
+        self.puzzle = puzzle
 
         backButton = tk.Button(self, text="<-", width = "15", bg="#dfdfdf", command =lambda: self.back())
         backButton.grid(row= 0, column= 0)
@@ -130,7 +141,9 @@ class infoWidget(tk.Frame):
     def back(self):
         pass
     def next(self):
-        pass
+        self.puzzle.grid[0][0].solution = 20
+        self.puzzle.grid[0][0].widget.label.config(text=self.puzzle.grid[0][0].solution,  font=(
+            'Franklin Gothic', 21, "bold"))
 
 
 

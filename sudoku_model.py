@@ -1,12 +1,15 @@
 from symtable import Class
 import numpy as np
+#import GUI
+from explainer import SolutionStep, CandidatesStep, method
 
 class Sudoku:
     DIMENSIONS = 9
     difficulties = ["easy", "medium", "hard"]
-    def __init__(self, grid, difficulty):
+    def __init__(self, grid, difficulty= None):
         self.grid = grid
         self.difficulty = difficulty
+        self.stepQueue = []
 
     def __str__(self):
         sudok = self.difficulties[self.difficulty]
@@ -80,6 +83,7 @@ class Sudoku:
                         cell.getRow().update([solution])
                         cell.getCol().update([solution])
                         cell.getBox().update([solution])
+                        self.stepQueue.append(SolutionStep(cell, cell.solution, method.FORCED_DIGIT))
 
 
     def boxLineReduction(self): #box-line reduction
@@ -88,29 +92,49 @@ class Sudoku:
             box = box.cells.reshape(3,3)
             for i, row in enumerate(box):
                 otherRows = Unit(np.delete(box, i, 0).flatten())
+                eliminatedCandidates = []
+                eliminatedCells = []
                 for candidate in Unit(row).candidates:
                     if candidate not in otherRows.candidates:
+                        eliminatedCandidates.append(candidate)
                         for cell in row[0].getRow().cells:
                             if cell not in row:
-                                Unit([cell]).update([candidate])
+                                eliminatedCells.append(cell)
+                if len(eliminatedCells) !=0:
+                    Unit(eliminatedCells).update(eliminatedCandidates)
+                    CandidatesStep(eliminatedCells, eliminatedCandidates, method.BOX_LINE_REDUCTION)
+
             for i, col in enumerate(box.T):
                 otherCols = Unit(np.delete(box, i, 1).flatten())
+                eliminatedCandidates = []
+                eliminatedCells = []
                 for candidate in Unit(col).candidates:
                     if candidate not in otherCols.candidates:
+                        eliminatedCandidates.append(candidate)
                         for cell in col[0].getCol().cells:
                             if cell not in col:
-                                Unit([cell]).update([candidate])
+                                eliminatedCells.append(cell)
+                if len(eliminatedCells) !=0:
+                    Unit(eliminatedCells).update(eliminatedCandidates)
+                    self.stepQueue.append(CandidatesStep(eliminatedCells, eliminatedCandidates, method.BOX_LINE_REDUCTION))
+
 
     def lineBoxReduction(self):
         for row in self.getRows():
             rowBox = row.cells.reshape(3,3)
             for i, band  in enumerate(rowBox):
                 otherBands = Unit(np.delete(rowBox,i,0).flatten())
+                eliminatedCandidates = []
+                eliminatedCells = []
                 for candidate in Unit(band).candidates:
                     if candidate not in otherBands.candidates:
+                        eliminatedCandidates.append(candidate)
                         for cell in band[0].getBox().cells:
                             if cell not in band:
-                                Unit([cell]).update([candidate])
+                                eliminatedCells.append(cell)
+                if len(eliminatedCells) !=0:
+                    Unit(eliminatedCells).update(eliminatedCandidates)
+                    self.stepQueue.append(CandidatesStep(eliminatedCells, eliminatedCandidates, method.LINE_BOX_REDUCTION))
 
     def hiddenSingle(self):
         for row in self.getRows():
@@ -120,11 +144,10 @@ class Sudoku:
         for box in self.getBoxes():
             box.hiddenSingleHelper()
 
-
-
 class Unit:
     def __init__(self, cells = None, ):
         self.cells = cells
+        self.sudoku = self.cells[0].sudoku
         candidates = []
         for cell in self.cells:
             for candidate in cell.candidates:
@@ -143,7 +166,7 @@ class Unit:
                 if sol in cell.candidates:
                     cell.candidates.remove(sol)
 
-    def update(self, solutions): #have to update updates
+    def update(self, solutions):
         for cell in self.cells:
             for sol in solutions:
                 if sol in cell.candidates:
@@ -170,19 +193,18 @@ class Unit:
                 onlyCell.getRow().update([candidate])
                 onlyCell.getCol().update([candidate])
                 onlyCell.getBox().update([candidate])
+                self.sudoku.stepQueue.append(SolutionStep(onlyCell, onlyCell.solution, method.HIDDEN_SINGLE))
 
 
 class Cell:
-    #solution = 0
-    #candidates = []
-    def __init__(self, x,y, solution = 0, candidates = None, sudoku = None, isGiven = False):
+    def __init__(self, x,y, solution = 0, candidates= None, sudoku= None, isGiven= False, widget= None):
         self.x = x
         self.y = y
         self.solution = solution
         self.candidates = candidates
         self.sudoku = sudoku
         self.isGiven = isGiven
-
+        self.widge = widget
 
     def __str__(self):
         return f"Solution: {self.solution}, candidates: {self.candidates} at {self.x},{self.y}"
@@ -191,13 +213,13 @@ class Cell:
         return f"Solution: {self.solution}, candidates: {self.candidates}"
 
     def getRow(self):
-        return Unit(self.sudoku[self.x])
+        return Unit(self.sudoku.grid[self.x])
 
     def getCol(self):
-        return Unit(self.sudoku[:,self.y])
+        return Unit(self.sudoku.grid[:,self.y])
 
     def getBox(self):
-        box = Unit(self.sudoku[
+        box = Unit(self.sudoku.grid[
               (self.x//3)*3:(self.x//3)*3+3,
               (self.y//3)*3:(self.y//3)*3+3
               ].flatten())
