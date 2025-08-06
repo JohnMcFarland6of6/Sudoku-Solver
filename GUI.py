@@ -192,8 +192,58 @@ class infoWidget(tk.Frame):
         if self.puzzle.linkedList.current.prev.prev != None:
             prevStep = self.puzzle.linkedList.current.prev.prev.data
 
+        if isinstance(step, Step):
+            step.cell.widget.highlightCell("white")
+            match step.unit:
+                case UnitType.ROW:
+                    for cell in step.cell.getRow().cells:
+                        cell.widget.highlightCell("white")
+                case UnitType.COL:
+                    for cell in step.cell.getCol().cells:
+                        cell.widget.highlightCell("white")
+                case UnitType.BOX:
+                    for cell in step.cell.getBox().cells:
+                        cell.widget.highlightCell("white")
+
+            self.label.config(text=prevStep.__str__())
+            step.cell.candidates.append(step.solution)
+            step.cell.solution = 0
+            step.cell.widget.getNewLabel()
+        else:
+            self.label.config(text=prevStep.__str__())
+
+            if step.explanation == Method.LINE_BOX_REDUCTION:
+                for cell in step.cells[0].getBox().unsolvedCells:
+                    cell.widget.highlightCell("white")
+            else:
+                match step.unit:
+                    case UnitType.ROW:
+                        for cell in step.cells[0].getRow().unsolvedCells:
+                            cell.widget.highlightCell("white")
+                    case UnitType.COL:
+                        for cell in step.cells[0].getCol().unsolvedCells:
+                            cell.widget.highlightCell("white")
+                    case UnitType.BOX:
+                        for cell in step.cells[0].getBox().unsolvedCells:
+                            cell.widget.highlightCell("white")
+
+
+
+
+
         if isinstance(prevStep, Step):
+            match prevStep.unit:
+                case UnitType.ROW:
+                    for cell in prevStep.cell.getRow().unsolvedCells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
+                case UnitType.COL:
+                    for cell in prevStep.cell.getCol().unsolvedCells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
+                case UnitType.BOX:
+                    for cell in prevStep.cell.getBox().unsolvedCells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
             prevStep.cell.widget.highlightCell(ORANGE)
+
             prevStep.cell.candidates = prevStep.finalCandidates
             prevStep.cell.solution = 0
             prevStep.cell.widget.getNewLabel()
@@ -202,21 +252,46 @@ class infoWidget(tk.Frame):
 
             for cell in prevStep.peers:
                 cell.widget.getNewLabel()
+        else:
 
-        if isinstance(step, Step):
-            step.cell.widget.highlightCell("white")
-            self.label.config(text=prevStep.__str__())
-            step.cell.candidates.append(step.solution)
-            step.cell.solution = 0
-            step.cell.widget.getNewLabel()
+            if prevStep.unit == UnitType.ROW:
+                for cell in prevStep.cells[0].getRow().unsolvedCells:
+                    #if cell not in step.cells:
+                    cell.widget.highlightCell(UNIT_YELLOW)
+            elif prevStep.unit == UnitType.COL:
+                for cell in prevStep.cells[0].getCol().unsolvedCells:
+                    cell.widget.highlightCell(UNIT_YELLOW)
+            else:
+                for cell in prevStep.cells[0].getBox().unsolvedCells:
+                    cell.widget.highlightCell(UNIT_YELLOW)
+
+            for cell in prevStep.cells:
+                cell.widget.highlightCell(ORANGE)
+
+            for candidate in prevStep.eliminations.keys():
+                Unit(prevStep.eliminations[candidate]).unupdate(candidate)
+                for cell in prevStep.eliminations[candidate]:
+                    cell.widget.getNewLabel()
+
 
         self.puzzle.linkedList.current = self.puzzle.linkedList.current.prev
 
     def next(self):
-        step = self.puzzle.linkedList.current.data
+        step = None
         prevStep = None
-        if self.puzzle.linkedList.current.prev != None:
-            prevStep = self.puzzle.linkedList.current.prev.data
+
+        if self.puzzle.linkedList.current != None:
+            step = self.puzzle.linkedList.current.data
+
+            if self.puzzle.linkedList.current.prev != None:
+                prevStep = self.puzzle.linkedList.current.prev.data
+            self.label.config(text=step.__str__())
+        else:
+            step = self.puzzle.linkedList.tail.data
+            step.cell.widget.highlightCell("white")
+            step.cell.solution = step.solution
+            step.cell.widget.getNewLabel()
+            self.label.config(text="...And the sudoku is solved!")
 
         if prevStep != None:
             if isinstance(prevStep, Step):
@@ -239,43 +314,73 @@ class infoWidget(tk.Frame):
                 prevStep.peers= prevStep.cell.updatePeers(prevStep.solution)
                 for cell in prevStep.peers:
                     cell.widget.getNewLabel()
-        self.label.config(text=step.__str__())
+            else:
+                cellsToUpdate = None
 
-        if isinstance(step, Step):
-            match step.unit:
-                case UnitType.ROW:
-                    for cell in step.cell.getRow().unsolvedCells:
-                        cell.widget.highlightCell(UNIT_YELLOW)
-                case UnitType.COL:
-                    for cell in step.cell.getCol().unsolvedCells:
-                        cell.widget.highlightCell(UNIT_YELLOW)
-                case UnitType.BOX:
-                    for cell in step.cell.getBox().unsolvedCells:
-                        cell.widget.highlightCell(UNIT_YELLOW)
+                if prevStep.explanation == Method.LINE_BOX_REDUCTION:
+                    cellsToUpdate = prevStep.cells[0].getBox()
+                    if prevStep.unit == UnitType.ROW:
+                        cellsToUnhighlight = prevStep.cells[0].getRow()
+                    else:
+                        cellsToUnhighlight = prevStep.cells[0].getRow()
+                    for cell in cellsToUnhighlight.cells:
+                        cell.widget.highlightCell("white")
+                else:
+                    match prevStep.unit:
+                        case UnitType.ROW:
+                            cellsToUpdate = prevStep.cells[0].getRow()
+                        case UnitType.COL:
+                            cellsToUpdate = prevStep.cells[0].getCol()
+                        case UnitType.BOX:
+                            cellsToUpdate = prevStep.cells[0].getBox()
 
-            step.cell.widget.highlightCell(ORANGE)
-        else:
-            print(step)
+                temp = cellsToUpdate.cells.tolist()
+                for cell in prevStep.cells:
+                    temp.remove(cell)
+                cellsToUpdate.cells = np.array(temp)
+                for solution in prevStep.solutions:
+                    eliminations = cellsToUpdate.update(solution)
+                    if len(eliminations) != 0:
+                        prevStep.eliminations[solution] = eliminations
+                for cell in cellsToUpdate.cells:
+                    cell.widget.highlightCell("white")
+                    cell.widget.getNewLabel()
+                for cell in prevStep.cells:
+                    cell.widget.highlightCell("white")
 
-            match step.explanation:
-                case Method.BOX_LINE_REDUCTION:
-                    pass
 
-                case Method.LINE_BOX_REDUCTION:
-                    for cell in step.cells:
-                        cell.widget.highlightCell(ORANGE)
-                    for cell in step.cells[0].getBox().unsolvedCells:
-                        if cell not in step.cells:
+        if step != None:
+            if isinstance(step, Step):
+                match step.unit:
+                    case UnitType.ROW:
+                        for cell in step.cell.getRow().unsolvedCells:
+                            cell.widget.highlightCell(UNIT_YELLOW)
+                    case UnitType.COL:
+                        for cell in step.cell.getCol().unsolvedCells:
+                            cell.widget.highlightCell(UNIT_YELLOW)
+                    case UnitType.BOX:
+                        for cell in step.cell.getBox().unsolvedCells:
                             cell.widget.highlightCell(UNIT_YELLOW)
 
-                case Method.NAKED_PAIR:
-                    pass
+                step.cell.widget.highlightCell(ORANGE)
+            else:
+                print(step)
 
+                if step.unit == UnitType.ROW:
+                    for cell in step.cells[0].getRow().unsolvedCells:
+                        #if cell not in step.cells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
+                elif step.unit == UnitType.COL:
+                    for cell in step.cells[0].getCol().unsolvedCells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
+                else:
+                    for cell in step.cells[0].getBox().unsolvedCells:
+                        cell.widget.highlightCell(UNIT_YELLOW)
 
-
-
-
-        self.puzzle.linkedList.current = self.puzzle.linkedList.current.next
+                for cell in step.cells:
+                    cell.widget.highlightCell(ORANGE)
+        if self.puzzle.linkedList.current != None:
+            self.puzzle.linkedList.current = self.puzzle.linkedList.current.next
 
 
 

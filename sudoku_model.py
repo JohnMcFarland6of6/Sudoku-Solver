@@ -211,17 +211,24 @@ class Sudoku:
             wasUsed = box.nakedPairHelper(UnitType.BOX)
             if wasUsed:
                 break
-        for row in self.getRows():
-            wasUsed = row.nakedPairHelper(UnitType.ROW)
-            if wasUsed:
-                break
-        for col in self.getCols():
-            wasUsed = col.nakedPairHelper(UnitType.COL)
-            if wasUsed:
-                break
+
+        if wasUsed is False:
+            for row in self.getRows():
+                wasUsed = row.nakedPairHelper(UnitType.ROW)
+                if wasUsed:
+                    break
+
+        if wasUsed is False:
+            for col in self.getCols():
+                wasUsed = col.nakedPairHelper(UnitType.COL)
+                if wasUsed:
+                    break
+        return wasUsed
 
 class Unit:
     def __init__(self, cells = None, ):
+        if isinstance(cells, list):
+            cells = np.array(cells)
         self.cells = cells
         self.sudoku = self.cells[0].sudoku
 
@@ -300,7 +307,6 @@ class Unit:
             firstCell = possibleCells[i]
             for j in range(i+1, len(possibleCells)):
                 if firstCell.candidates == possibleCells[j].candidates:
-                    wasUsed = True
                     secondCell = possibleCells[j]
 
                     updatedCells = set()
@@ -312,7 +318,11 @@ class Unit:
                     for candidate in firstCell.candidates:
                         updatedCells.update(cellsToUpdateUnit.update(candidate))
                     if len(updatedCells) != 0:
-                        self.sudoku.linkedList.addTail(Node(EliminationStep([firstCell, secondCell], firstCell.candidates, Method.NAKED_PAIR, unitT)))
+                        wasUsed = True
+                        nakedPairCandidates = []
+                        for candidate in firstCell.candidates:
+                            nakedPairCandidates.append(candidate)
+                        self.sudoku.linkedList.addTail(Node(EliminationStep([firstCell, secondCell], nakedPairCandidates, Method.NAKED_PAIR, unitT)))
                     break
             if wasUsed:
                 break

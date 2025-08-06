@@ -26,7 +26,10 @@ class EliminationStep():
         self.explanation = explanation
         self.unit = unit
         self.peers = None
-        self.finalCandidates = None
+        self.eliminations = {}
+
+
+
 
     def __str__(self):
         match self.explanation:
@@ -43,7 +46,12 @@ class EliminationStep():
                 return toStr
 
             case Method.NAKED_PAIR:
-                return "poop"
+                toStr = f"Since the cells at "
+                for cell in self.cells:
+                    toStr += f"({cell.y+1},{cell.x+1}), "
+                toStr += f"must be a {self.solutions[0]} or a {self.solutions[1]}, they are the only cell is their {self.unit.__str__()} that can have those candidates."
+                return toStr
+
 
 
 
